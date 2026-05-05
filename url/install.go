@@ -2,7 +2,7 @@ package url
 
 import (
 	"fmt"
-	"github.com/packwiz/packwiz/core"
+	"github.com/kivts/packwiz/core"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"io"

@@ -1,7 +1,7 @@
 package url
 
 import (
-	"github.com/packwiz/packwiz/cmd"
+	"github.com/kivts/packwiz/cmd"
 	"github.com/spf13/cobra"
 )
 

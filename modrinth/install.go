@@ -9,10 +9,10 @@ import (
 	"strings"
 
 	modrinthApi "codeberg.org/jmansfield/go-modrinth/modrinth"
-	"github.com/packwiz/packwiz/cmdshared"
+	"github.com/kivts/packwiz/cmdshared"
 	"github.com/spf13/viper"
 
-	"github.com/packwiz/packwiz/core"
+	"github.com/kivts/packwiz/core"
 	"github.com/spf13/cobra"
 	"gopkg.in/dixonwille/wmenu.v4"
 )
