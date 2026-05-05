@@ -256,9 +256,16 @@ func (in *Index) Refresh() error {
 		}
 	}
 
-	_, err = in.RefreshCustomJarDownloadHashes(customJars)
+	if len(customJars) > 0 {
+		fmt.Printf("Found %d custom jar(s) in custom/\n", len(customJars))
+	}
+
+	refreshedCustomJars, err := in.RefreshCustomJarDownloadHashes(customJars)
 	if err != nil {
 		return err
+	}
+	if len(customJars) > 0 {
+		fmt.Printf("Rehashed %d custom jar metadata file(s)\n", refreshedCustomJars)
 	}
 
 	progressContainer := mpb.New()
@@ -339,17 +346,17 @@ func (in Index) findCustomJarForMod(mod Mod, customJars []string) (string, bool)
 }
 
 // RefreshCustomJarDownloadHashes updates URL metadata hashes from matching local jars in /custom.
-func (in *Index) RefreshCustomJarDownloadHashes(customJars []string) (bool, error) {
+func (in *Index) RefreshCustomJarDownloadHashes(customJars []string) (int, error) {
 	if len(customJars) == 0 {
-		return false, nil
+		return 0, nil
 	}
 
 	mods, err := in.LoadAllMods()
 	if err != nil {
-		return false, err
+		return 0, err
 	}
 
-	changed := false
+	changed := 0
 	for _, mod := range mods {
 		if mod.Download.Mode != "" && mod.Download.Mode != ModeURL {
 			continue
@@ -359,6 +366,10 @@ func (in *Index) RefreshCustomJarDownloadHashes(customJars []string) (bool, erro
 		if !ok {
 			continue
 		}
+		relJarPath, err := in.RelIndexPath(jarPath)
+		if err != nil {
+			relJarPath = jarPath
+		}
 
 		hashFormat := mod.Download.HashFormat
 		if !slices.Contains([]string{"sha1", "sha512", "sha256"}, hashFormat) {
@@ -367,10 +378,11 @@ func (in *Index) RefreshCustomJarDownloadHashes(customJars []string) (bool, erro
 
 		hash, err := hashFile(jarPath, hashFormat)
 		if err != nil {
-			return false, err
+			return 0, err
 		}
 
 		if mod.Download.HashFormat == hashFormat && mod.Download.Hash == hash {
+			fmt.Printf("Custom jar metadata already current: %s -> %s\n", mod.GetFilePath(), relJarPath)
 			continue
 		}
 
@@ -378,13 +390,14 @@ func (in *Index) RefreshCustomJarDownloadHashes(customJars []string) (bool, erro
 		mod.Download.Hash = hash
 		metaHashFormat, metaHash, err := mod.Write()
 		if err != nil {
-			return false, err
+			return 0, err
 		}
 		err = in.RefreshFileWithHash(mod.GetFilePath(), metaHashFormat, metaHash, true)
 		if err != nil {
-			return false, err
+			return 0, err
 		}
-		changed = true
+		fmt.Printf("Rehashed custom jar metadata: %s -> %s\n", mod.GetFilePath(), relJarPath)
+		changed++
 	}
 
 	return changed, nil
