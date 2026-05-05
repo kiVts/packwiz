@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -29,6 +30,28 @@ type Index struct {
 type indexTomlRepresentation struct {
 	HashFormat string                       `toml:"hash-format"`
 	Files      indexFilesTomlRepresentation `toml:"files"`
+}
+
+func hashFile(path, format string) (string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+
+	h, err := GetHashImpl(format)
+	if err != nil {
+		_ = f.Close()
+		return "", err
+	}
+	if _, err := io.Copy(h, f); err != nil {
+		_ = f.Close()
+		return "", err
+	}
+	err = f.Close()
+	if err != nil {
+		return "", err
+	}
+	return h.HashToString(h.Sum(nil)), nil
 }
 
 // LoadIndex attempts to load the index file from a path
@@ -81,28 +104,14 @@ func (in *Index) updateFile(path string) error {
 	if viper.GetBool("no-internal-hashes") {
 		hashString = ""
 	} else {
-		f, err := os.Open(path)
-		if err != nil {
-			return err
-		}
-
 		// Hash usage strategy (may change):
 		// Just use SHA256, overwrite existing hash regardless of what it is
 		// May update later to continue using the same hash that was already being used
-		h, err := GetHashImpl("sha256")
-		if err != nil {
-			_ = f.Close()
-			return err
-		}
-		if _, err := io.Copy(h, f); err != nil {
-			_ = f.Close()
-			return err
-		}
-		err = f.Close()
+		var err error
+		hashString, err = hashFile(path, "sha256")
 		if err != nil {
 			return err
 		}
-		hashString = h.HashToString(h.Sum(nil))
 	}
 
 	markAsMetaFile := false
@@ -176,7 +185,17 @@ func (in *Index) Refresh() error {
 	pathIgnore, _ := filepath.Abs(filepath.Join(in.packRoot, ".packwizignore"))
 	ignore, ignoreExists := readGitignore(pathIgnore)
 
+	fileListSeen := make(map[string]struct{})
 	var fileList []string
+	var customJars []string
+	addFile := func(p string) {
+		if _, ok := fileListSeen[p]; ok {
+			return
+		}
+		fileListSeen[p] = struct{}{}
+		fileList = append(fileList, p)
+	}
+
 	err := filepath.WalkDir(in.packRoot, func(path string, info os.DirEntry, err error) error {
 		if err != nil {
 			// TODO: Handle errors on individual files properly
@@ -210,9 +229,34 @@ func (in *Index) Refresh() error {
 			return nil
 		}
 
-		fileList = append(fileList, path)
+		addFile(path)
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+
+	customPath := filepath.Join(in.packRoot, "custom")
+	if info, err := os.Stat(customPath); err == nil && info.IsDir() {
+		err = filepath.WalkDir(customPath, func(path string, info os.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if info.IsDir() {
+				return nil
+			}
+			if strings.EqualFold(filepath.Ext(path), ".jar") {
+				customJars = append(customJars, path)
+				addFile(path)
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	_, err = in.RefreshCustomJarDownloadHashes(customJars)
 	if err != nil {
 		return err
 	}
@@ -256,6 +300,94 @@ func (in *Index) Refresh() error {
 	}
 
 	return nil
+}
+
+func isInDir(dir, path string) bool {
+	rel, err := filepath.Rel(dir, path)
+	if err != nil {
+		return false
+	}
+	return rel == "." || (rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)))
+}
+
+func (in Index) findCustomJarForMod(mod Mod, customJars []string) (string, bool) {
+	customPath := filepath.Join(in.packRoot, "custom")
+	destPath := mod.GetDestFilePath()
+
+	if filepath.Ext(destPath) == ".jar" && isInDir(customPath, destPath) {
+		if _, err := os.Stat(destPath); err == nil {
+			return destPath, true
+		}
+	}
+
+	if len(mod.FileName) == 0 {
+		return "", false
+	}
+
+	filename := filepath.Base(filepath.FromSlash(mod.FileName))
+	var matches []string
+	for _, jar := range customJars {
+		if filepath.Base(jar) == filename {
+			matches = append(matches, jar)
+		}
+	}
+	if len(matches) == 1 {
+		return matches[0], true
+	}
+
+	return "", false
+}
+
+// RefreshCustomJarDownloadHashes updates URL metadata hashes from matching local jars in /custom.
+func (in *Index) RefreshCustomJarDownloadHashes(customJars []string) (bool, error) {
+	if len(customJars) == 0 {
+		return false, nil
+	}
+
+	mods, err := in.LoadAllMods()
+	if err != nil {
+		return false, err
+	}
+
+	changed := false
+	for _, mod := range mods {
+		if mod.Download.Mode != "" && mod.Download.Mode != ModeURL {
+			continue
+		}
+
+		jarPath, ok := in.findCustomJarForMod(*mod, customJars)
+		if !ok {
+			continue
+		}
+
+		hashFormat := mod.Download.HashFormat
+		if !slices.Contains([]string{"sha1", "sha512", "sha256"}, hashFormat) {
+			hashFormat = "sha256"
+		}
+
+		hash, err := hashFile(jarPath, hashFormat)
+		if err != nil {
+			return false, err
+		}
+
+		if mod.Download.HashFormat == hashFormat && mod.Download.Hash == hash {
+			continue
+		}
+
+		mod.Download.HashFormat = hashFormat
+		mod.Download.Hash = hash
+		metaHashFormat, metaHash, err := mod.Write()
+		if err != nil {
+			return false, err
+		}
+		err = in.RefreshFileWithHash(mod.GetFilePath(), metaHashFormat, metaHash, true)
+		if err != nil {
+			return false, err
+		}
+		changed = true
+	}
+
+	return changed, nil
 }
 
 // Write saves the index file
