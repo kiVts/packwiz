@@ -260,14 +260,6 @@ func (in *Index) Refresh() error {
 		fmt.Printf("Found %d custom jar(s) in custom/\n", len(customJars))
 	}
 
-	refreshedCustomJars, err := in.RefreshCustomJarDownloadHashes(customJars)
-	if err != nil {
-		return err
-	}
-	if len(customJars) > 0 {
-		fmt.Printf("Rehashed %d custom jar metadata file(s)\n", refreshedCustomJars)
-	}
-
 	progressContainer := mpb.New()
 	progress := progressContainer.AddBar(int64(len(fileList)),
 		mpb.PrependDecorators(
@@ -304,6 +296,14 @@ func (in *Index) Refresh() error {
 		if !file.markedFound() {
 			delete(in.Files, p)
 		}
+	}
+
+	refreshedCustomJars, err := in.RefreshCustomJarDownloadHashes(customJars)
+	if err != nil {
+		return err
+	}
+	if len(customJars) > 0 {
+		fmt.Printf("Rehashed %d custom jar metadata file(s)\n", refreshedCustomJars)
 	}
 
 	return nil
