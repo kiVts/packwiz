@@ -119,7 +119,14 @@ var customAddCmd = &cobra.Command{
 				Hash:       hash,
 			},
 		}
-		if customOptionalFlag {
+		if customDisabledFlag {
+			// Offered in the installer, but not installed unless the player ticks it
+			modMeta.Option = &core.ModOption{
+				Optional:    true,
+				Description: customOptionalDescFlag,
+				Default:     false,
+			}
+		} else if customOptionalFlag {
 			modMeta.Option = &core.ModOption{
 				Optional:    true,
 				Description: customOptionalDescFlag,
@@ -202,6 +209,7 @@ var customVersionFlag string
 var customSlugFlag string
 var customSideFlag string
 var customOptionalFlag bool
+var customDisabledFlag bool
 var customOptionalDescFlag string
 
 func init() {
@@ -214,5 +222,6 @@ func init() {
 	customAddCmd.Flags().StringVar(&customSlugFlag, "meta-name", "", "Override the name of the .pw.toml file (defaults to the mod id)")
 	customAddCmd.Flags().StringVar(&customSideFlag, "side", "", "The side this mod is installed on (client/server/both, defaults to both)")
 	customAddCmd.Flags().BoolVar(&customOptionalFlag, "optional", false, "Mark the mod as optional")
+	customAddCmd.Flags().BoolVarP(&customDisabledFlag, "disabled", "f", false, "Add the mod switched off: it is offered in the installer but not installed unless the player ticks it")
 	customAddCmd.Flags().StringVar(&customOptionalDescFlag, "optional-description", "", "Description shown for an optional mod")
 }

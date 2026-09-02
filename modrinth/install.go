@@ -434,6 +434,7 @@ func createFileMeta(project *modrinthApi.Project, version *modrinthApi.Version, 
 		FileName: *file.Filename,
 		Version:  versionNumber(version),
 		Category: core.NormalizeCategory(categoryFlag),
+		Option:   disabledOption(),
 		Side:     side,
 		Download: core.ModDownload{
 			URL:        *file.URL,
@@ -469,6 +470,17 @@ func createFileMeta(project *modrinthApi.Project, version *modrinthApi.Version, 
 }
 
 var categoryFlag string
+var disabledFlag bool
+
+// disabledOption marks a mod as optional and off by default, so the installer shows
+// it unticked and only downloads it if the player asks for it.
+func disabledOption() *core.ModOption {
+	if !disabledFlag {
+		return nil
+	}
+	return &core.ModOption{Optional: true, Default: false}
+}
+
 var projectIDFlag string
 var versionIDFlag string
 var versionFilenameFlag string
@@ -476,6 +488,7 @@ var versionFilenameFlag string
 func init() {
 	modrinthCmd.AddCommand(installCmd)
 
+	installCmd.Flags().BoolVarP(&disabledFlag, "disabled", "f", false, "Add the mod switched off: it is offered in the installer but not installed unless the player ticks it")
 	installCmd.Flags().StringVarP(&categoryFlag, "mod-category", "m", "", "Category to group this mod under in the installer UI (e.g. \"Optional\"); mods without one are required")
 	installCmd.Flags().StringVar(&projectIDFlag, "project-id", "", "The Modrinth project ID to use")
 	installCmd.Flags().StringVar(&versionIDFlag, "version-id", "", "The Modrinth version ID to use")
