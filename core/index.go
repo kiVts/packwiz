@@ -32,6 +32,11 @@ type indexTomlRepresentation struct {
 	Files      indexFilesTomlRepresentation `toml:"files"`
 }
 
+// HashFile hashes a file on disk with the named hash format.
+func HashFile(path, format string) (string, error) {
+	return hashFile(path, format)
+}
+
 func hashFile(path, format string) (string, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -212,6 +217,12 @@ func (in *Index) Refresh() error {
 			if ignore.MatchesPath(path) {
 				return fs.SkipDir
 			}
+			// custom/ holds the source jars for custom mods; they are downloaded through
+			// their mod metadata (which points at custom/<file>), so indexing them as
+			// plain files as well would install every custom mod twice.
+			if isCustomDir(in.packRoot, path) {
+				return fs.SkipDir
+			}
 			// Don't add directories to the file list
 			return nil
 		}
@@ -247,7 +258,6 @@ func (in *Index) Refresh() error {
 			}
 			if strings.EqualFold(filepath.Ext(path), ".jar") {
 				customJars = append(customJars, path)
-				addFile(path)
 			}
 			return nil
 		})
@@ -489,4 +499,17 @@ func (in Index) LoadAllMods() ([]*Mod, error) {
 		mods[i] = &modData
 	}
 	return mods, nil
+}
+
+// isCustomDir reports whether path is the pack's custom/ folder.
+func isCustomDir(packRoot string, path string) bool {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return false
+	}
+	customPath, err := filepath.Abs(filepath.Join(packRoot, "custom"))
+	if err != nil {
+		return false
+	}
+	return abs == customPath
 }

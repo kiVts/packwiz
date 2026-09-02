@@ -22,7 +22,10 @@ type Mod struct {
 	// inconsistent between mods.
 	Version string `toml:"version,omitempty"`
 	// Category groups the mod in the installer UI. Empty means required.
-	Category string      `toml:"category,omitempty"`
+	Category string `toml:"category,omitempty"`
+	// Custom marks a mod whose jar is shipped in the pack's custom/ folder rather
+	// than downloaded from a mod host.
+	Custom   bool        `toml:"custom,omitempty"`
 	Side     string      `toml:"side,omitempty"`
 	Pin      bool        `toml:"pin,omitempty"`
 	Download ModDownload `toml:"download"`
