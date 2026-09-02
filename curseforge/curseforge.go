@@ -13,9 +13,9 @@ import (
 	"github.com/spf13/viper"
 	"github.com/unascribed/FlexVer/go/flexver"
 
-	"github.com/mitchellh/mapstructure"
 	"github.com/kivts/packwiz/cmd"
 	"github.com/kivts/packwiz/core"
+	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/cobra"
 )
 
@@ -201,6 +201,8 @@ func createModFile(modInfo modInfo, fileInfo modFileInfo, index *core.Index, opt
 	modMeta := core.Mod{
 		Name:     modInfo.Name,
 		FileName: fileInfo.FileName,
+		Version:  fileInfo.FriendlyName,
+		Category: core.NormalizeCategory(modCategoryFlag),
 		Side:     core.UniversalSide,
 		Download: core.ModDownload{
 			HashFormat: hashFormat,
@@ -460,6 +462,7 @@ func (u cfUpdater) DoUpdate(mods []*core.Mod, cachedState []interface{}) error {
 
 		v.FileName = fileInfoData.FileName
 		v.Name = modState.Name
+		v.Version = fileInfoData.FriendlyName
 		hash, hashFormat := fileInfoData.getBestHash()
 		v.Download = core.ModDownload{
 			HashFormat: hashFormat,

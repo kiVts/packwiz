@@ -7,15 +7,22 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"unicode"
 
 	"github.com/BurntSushi/toml"
 )
 
 // Mod stores metadata about a mod. This is written to a TOML file for each mod.
 type Mod struct {
-	metaFile string      // The file for the metadata file, used as an ID
-	Name     string      `toml:"name"`
-	FileName string      `toml:"filename"`
+	metaFile string // The file for the metadata file, used as an ID
+	Name     string `toml:"name"`
+	FileName string `toml:"filename"`
+	// Version is the mod's own version string, as reported by the provider (or read
+	// out of the jar for custom jars) - not parsed out of the file name, which is
+	// inconsistent between mods.
+	Version string `toml:"version,omitempty"`
+	// Category groups the mod in the installer UI. Empty means required.
+	Category string      `toml:"category,omitempty"`
 	Side     string      `toml:"side,omitempty"`
 	Pin      bool        `toml:"pin,omitempty"`
 	Download ModDownload `toml:"download"`
@@ -148,4 +155,15 @@ func SlugifyName(name string) string {
 	noDuplicateDashes := slugifyRegex4.ReplaceAllString(limitedChars, "-")
 	noLeadingTrailingDashes := slugifyRegex5.ReplaceAllString(noDuplicateDashes, "")
 	return noLeadingTrailingDashes
+}
+
+// NormalizeCategory trims a category name and capitalises its first letter, so
+// "optional" and "Optional" don't end up as two separate dropdowns.
+func NormalizeCategory(category string) string {
+	category = strings.TrimSpace(category)
+	if category == "" {
+		return ""
+	}
+	r := []rune(category)
+	return string(unicode.ToUpper(r[0])) + string(r[1:])
 }

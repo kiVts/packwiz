@@ -397,6 +397,15 @@ func installVersion(project *modrinthApi.Project, version *modrinthApi.Version, 
 	return nil
 }
 
+// versionNumber is the mod's own version string (e.g. "1.5.3"), which is a far more
+// reliable indicator than the file name.
+func versionNumber(version *modrinthApi.Version) string {
+	if version == nil || version.VersionNumber == nil {
+		return ""
+	}
+	return *version.VersionNumber
+}
+
 func createFileMeta(project *modrinthApi.Project, version *modrinthApi.Version, file *modrinthApi.File, pack core.Pack, index *core.Index) error {
 	updateMap := make(map[string]map[string]interface{})
 
@@ -423,6 +432,8 @@ func createFileMeta(project *modrinthApi.Project, version *modrinthApi.Version, 
 	modMeta := core.Mod{
 		Name:     *project.Title,
 		FileName: *file.Filename,
+		Version:  versionNumber(version),
+		Category: core.NormalizeCategory(categoryFlag),
 		Side:     side,
 		Download: core.ModDownload{
 			URL:        *file.URL,
@@ -457,6 +468,7 @@ func createFileMeta(project *modrinthApi.Project, version *modrinthApi.Version, 
 	return index.RefreshFileWithHash(path, format, hash, true)
 }
 
+var categoryFlag string
 var projectIDFlag string
 var versionIDFlag string
 var versionFilenameFlag string
@@ -464,6 +476,7 @@ var versionFilenameFlag string
 func init() {
 	modrinthCmd.AddCommand(installCmd)
 
+	installCmd.Flags().StringVarP(&categoryFlag, "mod-category", "m", "", "Category to group this mod under in the installer UI (e.g. \"Optional\"); mods without one are required")
 	installCmd.Flags().StringVar(&projectIDFlag, "project-id", "", "The Modrinth project ID to use")
 	installCmd.Flags().StringVar(&versionIDFlag, "version-id", "", "The Modrinth version ID to use")
 	installCmd.Flags().StringVar(&versionFilenameFlag, "version-filename", "", "The Modrinth version filename to use")

@@ -443,6 +443,7 @@ var fileIDFlag uint32
 
 var gameFlag string
 var categoryFlag string
+var modCategoryFlag string
 
 func init() {
 	curseforgeCmd.AddCommand(installCmd)
@@ -450,5 +451,6 @@ func init() {
 	installCmd.Flags().Uint32Var(&addonIDFlag, "addon-id", 0, "The CurseForge project ID to use")
 	installCmd.Flags().Uint32Var(&fileIDFlag, "file-id", 0, "The CurseForge file ID to use")
 	installCmd.Flags().StringVar(&gameFlag, "game", "minecraft", "The game to add files from (slug, as stored in URLs); the game in the URL takes precedence")
+	installCmd.Flags().StringVarP(&modCategoryFlag, "mod-category", "m", "", "Category to group this mod under in the installer UI (e.g. \"Optional\"); mods without one are required")
 	installCmd.Flags().StringVar(&categoryFlag, "category", "", "The category to add files from (slug, as stored in URLs); the category in the URL takes precedence")
 }

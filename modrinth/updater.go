@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/mitchellh/mapstructure"
 	"github.com/kivts/packwiz/core"
+	"github.com/mitchellh/mapstructure"
 )
 
 type mrUpdateData struct {
@@ -100,6 +100,7 @@ func (u mrUpdater) DoUpdate(mods []*core.Mod, cachedState []interface{}) error {
 		}
 
 		mod.FileName = *file.Filename
+		mod.Version = versionNumber(version)
 		mod.Download = core.ModDownload{
 			URL:        *file.URL,
 			HashFormat: algorithm,

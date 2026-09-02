@@ -381,7 +381,23 @@ func (in *Index) RefreshCustomJarDownloadHashes(customJars []string) (int, error
 			return 0, err
 		}
 
-		if mod.Download.HashFormat == hashFormat && mod.Download.Hash == hash {
+		// Take the mod's name and version from the jar itself; file names are not a
+		// reliable version indicator (and often don't carry the mod's real name).
+		metaChanged := false
+		if meta, ok, err := ReadJarMeta(jarPath); err != nil {
+			fmt.Printf("Warning: couldn't read mod metadata from %s: %v\n", relJarPath, err)
+		} else if ok {
+			if meta.Name != "" && meta.Name != mod.Name {
+				mod.Name = meta.Name
+				metaChanged = true
+			}
+			if meta.Version != "" && meta.Version != mod.Version {
+				mod.Version = meta.Version
+				metaChanged = true
+			}
+		}
+
+		if !metaChanged && mod.Download.HashFormat == hashFormat && mod.Download.Hash == hash {
 			fmt.Printf("Custom jar metadata already current: %s -> %s\n", mod.GetFilePath(), relJarPath)
 			continue
 		}
