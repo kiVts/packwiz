@@ -111,8 +111,10 @@ var customAddCmd = &cobra.Command{
 			Custom:   true,
 			Side:     side,
 			Download: core.ModDownload{
-				// Relative to the pack root, i.e. the jar as served from custom/.
-				URL:        "custom/" + fileName,
+				// Leading slash means relative to the pack root, i.e. the jar as
+				// served from custom/ - without it the installer would resolve it
+				// against the metadata file's folder (mods/custom/...).
+				URL:        "/custom/" + fileName,
 				HashFormat: "sha256",
 				Hash:       hash,
 			},

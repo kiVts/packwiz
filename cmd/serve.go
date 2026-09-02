@@ -108,8 +108,11 @@ var serveCmd = &cobra.Command{
 					refreshMutex.RLock()
 				} else {
 					refreshMutex.RLock()
-					// Only allow indexed files
-					if _, found := index.Files[indexRelPath]; !found {
+					// Only allow indexed files, plus the custom/ folder - custom mod jars are
+					// deliberately not indexed (they are fetched through their mod metadata),
+					// but they still have to be downloadable.
+					_, found := index.Files[indexRelPath]
+					if !found && !strings.HasPrefix(path.Clean(urlPath), "custom/") {
 						fmt.Printf("File not found: %s\n", destPath)
 						refreshMutex.RUnlock()
 						w.WriteHeader(404)
