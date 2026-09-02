@@ -70,6 +70,7 @@ var customAddCmd = &cobra.Command{
 		// reliable source for either.
 		name := strings.TrimSuffix(fileName, filepath.Ext(fileName))
 		version := ""
+		modID := ""
 		slug := core.SlugifyName(name)
 		if meta, ok, err := core.ReadJarMeta(destPath); err != nil {
 			fmt.Printf("Warning: couldn't read mod metadata from the jar: %v\n", err)
@@ -79,6 +80,7 @@ var customAddCmd = &cobra.Command{
 			}
 			version = meta.Version
 			if meta.ModID != "" {
+				modID = meta.ModID
 				slug = core.SlugifyName(meta.ModID)
 			}
 		}
@@ -90,6 +92,10 @@ var customAddCmd = &cobra.Command{
 		}
 		if customSlugFlag != "" {
 			slug = customSlugFlag
+		} else if modID == "" {
+			fmt.Println("Warning: couldn't read a mod id from this jar, so it is filed under its file name.")
+			fmt.Println("         Another version with a different file name would be added as a separate mod;")
+			fmt.Println("         pass --meta-name to give every version the same entry.")
 		}
 
 		hash, err := core.HashFile(destPath, "sha256")
@@ -140,6 +146,16 @@ var customAddCmd = &cobra.Command{
 		}
 		metaPath := modMeta.SetMetaPath(filepath.Join(viper.GetString("meta-folder-base"), folder, slug+core.MetaExtension))
 
+		// Adding a newer version of a mod already in the pack replaces its entry, so the
+		// jar it used to point at has to go as well - otherwise custom/ collects a copy
+		// of every version ever added.
+		previousFileName := ""
+		previousVersion := ""
+		if existing, err := core.LoadMod(metaPath); err == nil {
+			previousFileName = filepath.Base(filepath.FromSlash(existing.FileName))
+			previousVersion = existing.Version
+		}
+
 		format, metaHash, err := modMeta.Write()
 		if err != nil {
 			fmt.Println(err)
@@ -162,15 +178,36 @@ var customAddCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		versionSuffix := ""
-		if version != "" {
-			versionSuffix = " " + version
+		if previousFileName != "" && previousFileName != fileName {
+			oldJar := filepath.Join(customDir, previousFileName)
+			if err := os.Remove(oldJar); err == nil {
+				fmt.Printf("Removed the jar it replaces: custom/%s\n", previousFileName)
+			} else if !os.IsNotExist(err) {
+				fmt.Printf("Warning: couldn't remove custom/%s: %v\n", previousFileName, err)
+			}
 		}
+
 		category := core.NormalizeCategory(customCategoryFlag)
 		if category == "" {
 			category = "Required"
 		}
-		fmt.Printf("Added custom mod %s%s to %s (%s)\n", name, versionSuffix, metaPath, category)
+		if previousFileName != "" {
+			from := previousVersion
+			if from == "" {
+				from = previousFileName
+			}
+			to := version
+			if to == "" {
+				to = fileName
+			}
+			fmt.Printf("Updated custom mod %s: %s -> %s in %s (%s)\n", name, from, to, metaPath, category)
+		} else {
+			versionSuffix := ""
+			if version != "" {
+				versionSuffix = " " + version
+			}
+			fmt.Printf("Added custom mod %s%s to %s (%s)\n", name, versionSuffix, metaPath, category)
+		}
 	},
 }
 
