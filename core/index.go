@@ -407,6 +407,15 @@ func (in *Index) RefreshCustomJarDownloadHashes(customJars []string) (int, error
 			}
 		}
 
+		// The installer shows a download size from the metadata, so an entry that
+		// predates the size field has to be rewritten even when nothing else moved
+		if info, err := os.Stat(jarPath); err == nil {
+			if size := uint64(info.Size()); mod.Download.Size != size {
+				mod.Download.Size = size
+				metaChanged = true
+			}
+		}
+
 		if !metaChanged && mod.Download.HashFormat == hashFormat && mod.Download.Hash == hash {
 			fmt.Printf("Custom jar metadata already current: %s -> %s\n", mod.GetFilePath(), relJarPath)
 			continue
@@ -414,9 +423,6 @@ func (in *Index) RefreshCustomJarDownloadHashes(customJars []string) (int, error
 
 		mod.Download.HashFormat = hashFormat
 		mod.Download.Hash = hash
-		if info, err := os.Stat(jarPath); err == nil {
-			mod.Download.Size = uint64(info.Size())
-		}
 		metaHashFormat, metaHash, err := mod.Write()
 		if err != nil {
 			return 0, err
