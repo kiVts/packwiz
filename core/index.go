@@ -414,6 +414,9 @@ func (in *Index) RefreshCustomJarDownloadHashes(customJars []string) (int, error
 
 		mod.Download.HashFormat = hashFormat
 		mod.Download.Hash = hash
+		if info, err := os.Stat(jarPath); err == nil {
+			mod.Download.Size = uint64(info.Size())
+		}
 		metaHashFormat, metaHash, err := mod.Write()
 		if err != nil {
 			return 0, err

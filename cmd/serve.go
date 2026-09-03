@@ -122,6 +122,14 @@ var serveCmd = &cobra.Command{
 				}
 				defer refreshMutex.RUnlock()
 
+				if info, err := os.Stat(destPath); err == nil {
+					w.Header().Set("Content-Length", strconv.FormatInt(info.Size(), 10))
+				}
+				// net/http drops the body for HEAD by itself, so the length above is all it needs
+				if req.Method == http.MethodHead {
+					return
+				}
+
 				f, err := os.Open(destPath)
 				if err != nil {
 					fmt.Printf("Error reading file \"%s\": %s\n", destPath, err)

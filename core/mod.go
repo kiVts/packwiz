@@ -46,6 +46,9 @@ type ModDownload struct {
 	URL        string `toml:"url,omitempty"`
 	HashFormat string `toml:"hash-format"`
 	Hash       string `toml:"hash"`
+	// Size of the file in bytes, so the installer can show a download size without
+	// asking the server. Optional; only written where packwiz knows it for certain.
+	Size uint64 `toml:"size,omitempty"`
 	// Mode defaults to modeURL (i.e. use URL when omitted or empty)
 	Mode string `toml:"mode,omitempty"`
 }

@@ -117,6 +117,7 @@ var customAddCmd = &cobra.Command{
 			Custom:   true,
 			Side:     side,
 			Download: core.ModDownload{
+				Size: uint64(sourceInfo.Size()),
 				// Leading slash means relative to the pack root, i.e. the jar as
 				// served from custom/ - without it the installer would resolve it
 				// against the metadata file's folder (mods/custom/...).
